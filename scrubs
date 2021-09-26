@@ -1,0 +1,122 @@
+#!/bin/sh
+
+files=$(find . -name "*.cpp")
+
+get_todos() {
+	if [ -z "$1" ]; then
+		grep -HPzo '/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*/\n' $files
+	else
+		grep -HPzo "/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*\s*@category\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+	fi
+}
+
+todos() {
+	hline=$(printf "%0.s─" $(seq $(($(tput cols) - 2))))
+	hbordertop=$(printf "┌%s┐" $hline)
+	hborderbot=$(printf "└%s┘" $hline)
+	titleline=$(printf "%s" $hline)
+
+	newline
+
+	printf "$(get_todos $1 | \
+		sed -e "s/^.*\/\*\* TODO/\\\\033[2;3;39m${hbordertop}\\\\033[0m\\\\n  &\\\\033[2;3;39m ${titleline}\\\\033[0m/g" | \
+		sed -e 's/^\s*\*/\*/g' -e 's/\/\*\* TODO/\n/g' | \
+		sed -e "s/^\*\//\\\\033[2;3;39m$hborderbot\\\\033[0m\\\\n/g" | \
+		sed -e 's/^\*/ /g' | \
+		sed -E 's/@category (.*)/\\033[34m\1\\033[0m/g' | \
+		sed -E 's/@description/\\033[2mdescription\\033[0m/g')\n"
+}
+
+get_docs() {
+	if [ -z "$1" ]; then
+		grep -HPzo '/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*/\n' $files
+	else
+		if [ -z "$2" ]; then
+			grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+		else
+			grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*\n\s*\*\s*@name\s*\N*$2\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+		fi
+	fi
+}
+
+doc() {
+	hline=$(printf "%0.s─" $(seq $(($(tput cols) - 2))))
+	hbordertop=$(printf "┌%s┐" $hline)
+	hborderbot=$(printf "└%s┘" $hline)
+	titleline=$(printf "%s" $hline)
+
+	newline
+
+	output=$(get_docs $1 $2 | \
+		sed -e "s/^.*\/\*\* DOC/\\\\033[2;3;39m${hbordertop}\\\\033[0m\\\\n  &\\\\033[2;3;39m ${titleline}\\\\033[0m/g" | \
+		sed -e 's/^\s*\*/\*/g' -e 's/\/\*\* DOC/\n/g' | \
+		sed -e "s/^\*\//\\\\033[2;3;39m$hborderbot\\\\033[0m\\\\n/g" | \
+		sed -e 's/^\*/ /g' | \
+		sed -E 's/@type (.*)/\\033[32m\1\\033[0m/g' | \
+		sed -E 's/@name (.*)/\\033[34m\1\\033[0m/g' | \
+		sed -E 's/@param (.*)/\\033[2mparam\\033[0m \\033[33m\1\\033[0m/g' | \
+		sed -E 's/@inherit (.*)/\\033[2minherit from\\033[0m \\033[33m\1\\033[0m/g' | \
+		sed -E 's/@return (.*)/\\033[2mreturn\\033[0m \\033[33m\1\\033[0m/g' | \
+		sed -E 's/@description/\\033[2mdescription\\033[0m/g')
+
+	if [ $(printf "$output" | wc -l) -eq 0 ]; then
+		printf "There is no documentation for '$1' '$2'\n"
+		newline
+	else
+		printf "${output}\n"
+	fi
+}
+
+search() {
+	docs=$(get_docs "" "")
+	list=$(echo "$docs" | grep -Pzo '@type\N*\n\s*\*\s*@name\N*\n' | sed -Ez 's/@type\s*(.*)\n\s*\*\s*@name\s*(.*)\n/\\033[32m\1\\033[0m \\033[34m\2\\033[0m\n/g')
+
+	selected=$(printf "${list}" | fzf --ansi --preview './scrubs doc {} | less -R')
+
+	while [ -n "$selected" ]; do
+		doc $selected | less -R
+		selected=$(printf "${list}" | fzf --ansi --preview './scrubs doc {} | less -R')
+	done
+}
+
+title() {
+	printf '\033[34m'
+	printf "$1"
+	printf '\033[2;3;39m - '
+	printf "$2"
+	printf '\033[0m\n'
+}
+
+newline() {
+	printf '\n'
+}
+
+comment() {
+	printf '\033[2;3;39m'
+	printf "$1"
+	printf '\033[0m'
+}
+
+help() {
+	newline
+	title "scrubs" "Let's Prepare The Operation"
+	newline
+	comment "Overview"
+	newline
+	newline
+	printf "    todo [category] - list todos [in this category]\n"
+	printf "    doc [type] [name] - list documentation for specific type\n"
+	printf "    search - browse through the docs (fzf needed)\n"
+	newline
+
+	comment "To report bugs, or if you need help send a message to <nathan@reinerweb.ch> or see github.com/NPScript."
+	newline
+	newline
+}
+
+case "$1" in
+	todo) todos $2;;
+	doc) doc $2 $3;;
+	search) search;;
+	*) help;;
+esac
