@@ -78,11 +78,11 @@ void TheBestClass::do_everything() {
  * @category some_bug
  *
  * @description
- * Some weared bug lol
+ * Some weird bug lol
  * what is this???
  */
 
-void some_weard_fun() {
+void some_weird_function() {
 
 }
 
