@@ -32,7 +32,7 @@ The `TODO` tag has the following structur:
  * @category some_bug
  *
  * @description
- * Some weared bug lol
+ * Some weird bug lol
  * what is this???
  */
 ```
