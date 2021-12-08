@@ -46,7 +46,7 @@ There is a *Makefile* so you are able to install `scrubs` with:
 ``` bash
 sudo make install
 ```
-Note that if you want to use the `search` functionality you have to install `fzf`.
+Note that if you want to use the `search` functionality of `scrubs` you have to install `fzf`.
 
 To uninstall
 
