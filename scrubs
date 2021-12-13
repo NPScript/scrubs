@@ -1,24 +1,28 @@
 #!/bin/sh
 
-files=$(find . -name "*.cpp")
+files() {
+	find . -name "*.cpp" -print0
+}
+
+# Using xargs -0 to grep all files so there will be no error caused by spaces in the name.
 
 get_todos() {
 	if [ -z "$1" ]; then
-		grep -HPzo '/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*/\n' $files
+		files | xargs -0 grep -HPzo '/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*/\n'
 	else
-		grep -HPzo "/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*\s*@category\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+		files | xargs -0 grep -HPzo "/\*\*\sTODO(\n\s*\*\N*)*\n\s*\*\s*@category\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n"
 	fi
 }
 
 todos() {
 	hline=$(printf "%0.s─" $(seq $(($(tput cols) - 2))))
-	hbordertop=$(printf "┌%s┐" $hline)
-	hborderbot=$(printf "└%s┘" $hline)
-	titleline=$(printf "%s" $hline)
+	hbordertop=$(printf "┌%s┐" "$hline")
+	hborderbot=$(printf "└%s┘" "$hline")
+	titleline=$(printf "%s" "$hline")
 
 	newline
 
-	printf "$(get_todos $1 | \
+	printf "%b" "$(get_todos "$1" | \
 		sed -e "s/^.*\/\*\* TODO/\\\\033[2;3;39m${hbordertop}\\\\033[0m\\\\n  &\\\\033[2;3;39m ${titleline}\\\\033[0m/g" | \
 		sed -e 's/^\s*\*/\*/g' -e 's/\/\*\* TODO/\n/g' | \
 		sed -e "s/^\*\//\\\\033[2;3;39m$hborderbot\\\\033[0m\\\\n/g" | \
@@ -29,25 +33,25 @@ todos() {
 
 get_docs() {
 	if [ -z "$1" ]; then
-		grep -HPzo '/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*/\n' $files
+		files | xargs -0 grep -HPzo '/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*/\n'
 	else
 		if [ -z "$2" ]; then
-			grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+			files | xargs -0 grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*(\n\s*\*\N*)*\n\s*\*/\n"
 		else
-			grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*\n\s*\*\s*@name\s*\N*$2\N*(\n\s*\*\N*)*\n\s*\*/\n" $files
+			files | xargs -0 grep -HPzo "/\*\*\sDOC(\n\s*\*\N*)*\n\s*\*\s*@type\s*\N*$1\N*\n\s*\*\s*@name\s*\N*$2\N*(\n\s*\*\N*)*\n\s*\*/\n"
 		fi
 	fi
 }
 
 doc() {
 	hline=$(printf "%0.s─" $(seq $(($(tput cols) - 2))))
-	hbordertop=$(printf "┌%s┐" $hline)
-	hborderbot=$(printf "└%s┘" $hline)
-	titleline=$(printf "%s" $hline)
+	hbordertop=$(printf "┌%s┐" "$hline")
+	hborderbot=$(printf "└%s┘" "$hline")
+	titleline=$(printf "%s" "$hline")
 
 	newline
 
-	output=$(get_docs $1 $2 | \
+	output=$(get_docs "$1" "$2" | \
 		sed -e "s/^.*\/\*\* DOC/\\\\033[2;3;39m${hbordertop}\\\\033[0m\\\\n  &\\\\033[2;3;39m ${titleline}\\\\033[0m/g" | \
 		sed -e 's/^\s*\*/\*/g' -e 's/\/\*\* DOC/\n/g' | \
 		sed -e "s/^\*\//\\\\033[2;3;39m$hborderbot\\\\033[0m\\\\n/g" | \
@@ -59,11 +63,11 @@ doc() {
 		sed -E 's/@return (.*)/\\033[2mreturn\\033[0m \\033[33m\1\\033[0m/g' | \
 		sed -E 's/@description/\\033[2mdescription\\033[0m/g')
 
-	if [ $(printf "$output" | wc -l) -eq 0 ]; then
-		printf "There is no documentation for '$1' '$2'\n"
+	if [ "$(printf "%s" "$output" | wc -l)" -eq 0 ]; then
+		printf "%s\n" "There is no documentation for '$1' '$2'"
 		newline
 	else
-		printf "${output}\n"
+		printf "%b\n" "${output}"
 	fi
 }
 
@@ -71,19 +75,19 @@ search() {
 	docs=$(get_docs "" "")
 	list=$(echo "$docs" | grep -Pzo '@type\N*\n\s*\*\s*@name\N*\n' | sed -Ez 's/@type\s*(.*)\n\s*\*\s*@name\s*(.*)\n/\\033[32m\1\\033[0m \\033[34m\2\\033[0m\n/g')
 
-	selected=$(printf "${list}" | fzf --ansi --preview './scrubs doc {} | less -R')
+	selected=$(printf "%b" "${list}" | fzf --ansi --preview "scrubs doc \"\$(echo {} | awk '{ print \$1 }')\" \"\$(echo {} | awk '{ print \$2 }')\" | less -R")
 
 	while [ -n "$selected" ]; do
-		doc $selected | less -R
-		selected=$(printf "${list}" | fzf --ansi --preview './scrubs doc {} | less -R')
+		doc "$selected" | less -R
+		selected=$(printf "%b" "${list}" | fzf --ansi --preview 'scrubs doc {} | less -R')
 	done
 }
 
 title() {
 	printf '\033[34m'
-	printf "$1"
+	printf "%s" "$1"
 	printf '\033[2;3;39m - '
-	printf "$2"
+	printf "%s" "$2"
 	printf '\033[0m\n'
 }
 
@@ -93,7 +97,7 @@ newline() {
 
 comment() {
 	printf '\033[2;3;39m'
-	printf "$1"
+	printf "%s", "$1"
 	printf '\033[0m'
 }
 
@@ -115,8 +119,8 @@ help() {
 }
 
 case "$1" in
-	todo) todos $2;;
-	doc) doc $2 $3;;
+	todo) todos "$2";;
+	doc) doc "$2" "$3";;
 	search) search;;
 	*) help;;
 esac
