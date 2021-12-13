@@ -1,6 +1,6 @@
 #!/bin/sh
 
-files=$(find . -name "*.cpp")
+files=$(find . -name "*.(cpp|c)")
 
 get_todos() {
 	if [ -z "$1" ]; then
