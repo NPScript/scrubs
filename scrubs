@@ -1,10 +1,8 @@
 #!/bin/sh
 
 files() {
-	find . -name "*.cpp" -print0
+	find . -regextype posix-egrep -regex ".*\.(cpp|c)" -print0
 }
-
-# Using xargs -0 to grep all files so there will be no error caused by spaces in the name.
 
 get_todos() {
 	if [ -z "$1" ]; then

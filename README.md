@@ -1,6 +1,6 @@
 # SCRUBS - Let's Prepare The Operation
 
-Scrubs is a little documentation tool written in POSIX-Shell. It should make easier to work in teams in a suckless way.
+Scrubs is a little documentation tool written in POSIX-Shell. It should make easier to work in teams in a suckless way, without having to it without any documentation. 
 
 ## Features
 
@@ -32,7 +32,7 @@ The `TODO` tag has the following structur:
  * @category some_bug
  *
  * @description
- * Some weared bug lol
+ * Some weird bug lol
  * what is this???
  */
 ```
@@ -46,6 +46,7 @@ There is a *Makefile* so you are able to install `scrubs` with:
 ``` bash
 sudo make install
 ```
+Note that if you want to use the `search` functionality of `scrubs` you have to install `fzf`.
 
 To uninstall
 
